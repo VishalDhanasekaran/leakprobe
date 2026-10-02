@@ -21,7 +21,16 @@ leakprobe audit-routes --save routes.json                # save routing state ..
 leakprobe audit-routes --from-file routes.json           # ... and audit it later, no root
 leakprobe analyze capture.pcap --endpoint 203.0.113.10:51820 [--allow-lan]   # LP-EGRESS-01
 leakprobe report results.json --format md                # re-render a saved JSON report
+
+sudo leakprobe lab up --profile wg-default-leaky         # build the namespace lab
+leakprobe lab status                                     # exit 0 when the lab is up
+sudo leakprobe lab down                                  # remove every lp-* namespace
 ```
+
+Lab profiles: `wg-default-leaky`, `wg-hardened`, `wg-ipv6-leak`, `wg-dns-leak`,
+`wg-no-killswitch`, `wg-tunnelvision`, `control-broken` (see `leakprobe/lab/profiles/`).
+The lab needs `iproute2`, `wireguard-tools`, `nftables` and `tcpdump`. It uses only private and
+documentation address ranges and never touches the real internet.
 
 All commands take `--format term|json|md`, `--output FILE` and `--strict`. Exit codes: 0 pass,
 1 at least one FAIL (or WARN with `--strict`), 2 tool/setup error.
@@ -32,4 +41,6 @@ All commands take `--format term|json|md`, `--output FILE` and `--strict`. Exit 
 uv run pytest -q
 uv run ruff check .
 uv run mypy leakprobe
+sudo -E LEAKPROBE_LAB=1 .venv/bin/pytest -m root    # lab integration tests
+scripts/sandbox.sh uv run pytest -q                 # same, without sudo (user namespaces)
 ```

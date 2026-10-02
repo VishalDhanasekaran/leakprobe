@@ -1,0 +1,15 @@
+name: wg-dns-leak
+description: Correct IPv4 and IPv6 routes, but the resolver is left as the ISP's (no kill switch)
+wireguard:
+  allowed_ips: ["0.0.0.0/0", "::/0"]
+  dns: null
+firewall: none
+extra_routes: []
+expected:
+  LP-ROUTE-01: pass
+  LP-V6-01: pass
+  LP-DNS-01: fail
+  LP-KILL-01: fail
+  LP-START-01: fail
+  LP-EGRESS-01: fail
+  LP-IDENT-01: pass

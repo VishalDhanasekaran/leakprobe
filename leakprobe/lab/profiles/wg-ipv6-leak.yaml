@@ -1,0 +1,15 @@
+name: wg-ipv6-leak
+description: IPv4-only tunnel with tunnel DNS and an IPv4-only kill switch; IPv6 left on
+wireguard:
+  allowed_ips: ["0.0.0.0/0"]
+  dns: 10.66.0.1
+firewall: killswitch-v4
+extra_routes: []
+expected:
+  LP-ROUTE-01: pass
+  LP-V6-01: fail
+  LP-DNS-01: pass
+  LP-KILL-01: pass
+  LP-START-01: pass
+  LP-EGRESS-01: fail
+  LP-IDENT-01: pass

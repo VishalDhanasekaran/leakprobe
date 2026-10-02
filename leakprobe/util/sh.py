@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -63,11 +64,22 @@ def which(tool: str) -> str | None:
     return shutil.which(tool)
 
 
-def spawn(args: Sequence[str]) -> "subprocess.Popen[str]":
-    """Start a long-running command (e.g. tcpdump); stderr is piped, stdout discarded."""
+def spawn(args: Sequence[str], *, log: Path | None = None) -> "subprocess.Popen[str]":
+    """Start a long-running command; stdout is discarded.
+
+    Without ``log`` stderr is piped to the caller (e.g. tcpdump). With ``log`` the process is
+    detached into its own session and stderr goes to that file, so it outlives the caller.
+    """
     argv = tuple(args)
     if not argv:
         raise ValueError("empty command")
-    return subprocess.Popen(
-        argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
-    )
+    if log is None:
+        return subprocess.Popen(
+            argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            text=True,
+        )
+    with log.open("a") as err:
+        return subprocess.Popen(
+            argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=err, text=True,
+            start_new_session=True,
+        )

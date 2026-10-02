@@ -1,0 +1,13 @@
+name: control-broken
+description: Tunnel never established; all traffic uses the ISP path and resolver
+wireguard: null
+firewall: none
+extra_routes: []
+expected:
+  LP-ROUTE-01: fail
+  LP-V6-01: fail
+  LP-DNS-01: fail
+  LP-KILL-01: fail
+  LP-START-01: fail
+  LP-EGRESS-01: fail
+  LP-IDENT-01: fail

@@ -13,6 +13,8 @@ from leakprobe import __version__
 from leakprobe.analyzers.packet_classifier import DEFAULT_LAN, ClassifierContext
 from leakprobe.collectors import routes
 from leakprobe.doctor import run_checks
+from leakprobe.lab import builder
+from leakprobe.lab.profile import list_profiles, load_profile
 from leakprobe.models import Report, exit_code, make_report
 from leakprobe.report import OutputFormat, render
 from leakprobe.report.jsonout import from_json
@@ -22,6 +24,8 @@ from leakprobe.util.net import parse_endpoint
 from leakprobe.util.sh import ShError
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
+lab_app = typer.Typer(no_args_is_help=True, help="Build and inspect the namespace lab (root).")
+app.add_typer(lab_app, name="lab")
 err = Console(stderr=True)
 
 FORMAT = typer.Option(OutputFormat.TERM, "--format", "-f", help="Output format.")
@@ -147,3 +151,52 @@ def analyze(
     ctx = ClassifierContext(ip, port, allow_lan, prefixes)
     env = {"capture": str(capture), "endpoint": endpoint, "physical": iface or "unknown"}
     _emit(make_report([audit_egress(packets, ctx)], environment=env), fmt, output, strict)
+
+
+def _print_status(status: builder.LabStatus) -> None:
+    table = Table(title=f"leakprobe lab: {'UP' if status.up else 'DOWN'}")
+    table.add_column("Item")
+    table.add_column("State")
+    table.add_row("profile", status.state.profile if status.state else "-")
+    table.add_row("namespaces", ", ".join(status.namespaces) or "-")
+    services = status.state.services if status.state else {}
+    for name, svc in services.items():
+        ok = status.services_alive.get(name, False)
+        state = f"{'[green]running[/]' if ok else '[red]dead[/]'} {svc.ns} {svc.proto}/{svc.port}"
+        table.add_row(f"service: {name}", state)
+    age = status.handshake_age_s
+    table.add_row("wg handshake", f"{age:.0f}s ago" if age is not None else "none yet")
+    Console().print(table)
+
+
+@lab_app.command("up")
+def lab_up(
+    profile: str = typer.Option(
+        ..., "--profile", "-p", help=f"One of: {', '.join(list_profiles())}"
+    ),
+) -> None:
+    """Build the lab for a profile (idempotent)."""
+    try:
+        builder.up(load_profile(profile))
+    except (ValueError, builder.LabError, ShError, OSError) as exc:
+        raise _fail(str(exc)) from exc
+    _print_status(builder.status())
+
+
+@lab_app.command("down")
+def lab_down() -> None:
+    """Remove every lp-* namespace, service and config file, even after a crash."""
+    try:
+        builder.require_root()
+    except builder.LabError as exc:
+        raise _fail(str(exc)) from exc
+    removed = builder.down()
+    typer.echo(f"removed: {', '.join(removed)}" if removed else "nothing to remove")
+
+
+@lab_app.command("status")
+def lab_status() -> None:
+    """Show the lab state. Exit 0 when the lab is up, 1 otherwise."""
+    status = builder.status()
+    _print_status(status)
+    raise typer.Exit(0 if status.up else 1)

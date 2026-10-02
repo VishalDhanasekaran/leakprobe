@@ -1,0 +1,15 @@
+name: wg-default-leaky
+description: Full-tunnel IPv4 only; DNS from ISP; no kill switch
+wireguard:
+  allowed_ips: ["0.0.0.0/0"]
+  dns: null
+firewall: none
+extra_routes: []
+expected:            # ground truth used by the validation matrix
+  LP-ROUTE-01: pass
+  LP-V6-01: fail
+  LP-DNS-01: fail
+  LP-KILL-01: fail
+  LP-START-01: fail
+  LP-EGRESS-01: fail
+  LP-IDENT-01: pass

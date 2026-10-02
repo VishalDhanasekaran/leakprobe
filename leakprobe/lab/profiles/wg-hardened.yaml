@@ -1,0 +1,15 @@
+name: wg-hardened
+description: Full tunnel for IPv4 and IPv6, DNS pinned to the tunnel resolver, nftables kill switch
+wireguard:
+  allowed_ips: ["0.0.0.0/0", "::/0"]
+  dns: 10.66.0.1
+firewall: killswitch
+extra_routes: []
+expected:
+  LP-ROUTE-01: pass
+  LP-V6-01: pass
+  LP-DNS-01: pass
+  LP-KILL-01: pass
+  LP-START-01: pass
+  LP-EGRESS-01: pass
+  LP-IDENT-01: pass

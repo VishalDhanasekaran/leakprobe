@@ -1,0 +1,19 @@
+name: wg-tunnelvision
+description: >-
+  Correct tunnel, but 0.0.0.0/1 and 128.0.0.0/1 via the physical gateway (simulating
+  DHCP option 121 routes) pull IPv4 traffic out of the tunnel; no kill switch
+wireguard:
+  allowed_ips: ["0.0.0.0/0", "::/0"]
+  dns: 10.66.0.1
+firewall: none
+extra_routes:
+  - {dst: 0.0.0.0/1, via: 192.168.100.1}
+  - {dst: 128.0.0.0/1, via: 192.168.100.1}
+expected:
+  LP-ROUTE-01: fail
+  LP-V6-01: pass
+  LP-DNS-01: pass
+  LP-KILL-01: fail
+  LP-START-01: fail
+  LP-EGRESS-01: fail
+  LP-IDENT-01: fail

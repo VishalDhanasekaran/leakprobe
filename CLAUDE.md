@@ -17,7 +17,11 @@ uv run pytest tests/unit/test_cli.py::test_version -q   # single test
 uv run ruff check .                                  # lint
 uv run mypy leakprobe                                # types
 sudo -E LEAKPROBE_LAB=1 .venv/bin/pytest -m root     # integration tests (needs root + lab tools)
+scripts/sandbox.sh uv run pytest -q                  # whole suite incl. root tests, no sudo
+scripts/sandbox.sh bash                              # shell with a disposable "root" for lab work
 ```
+
+`scripts/sandbox.sh` runs a command in an unprivileged user+mount+net namespace (tmpfs `/run`, overlay `/etc`), so the lab can be built and tested without sudo and without touching the host. sudo needs a password on this machine, so use the sandbox to verify lab code.
 
 All three of pytest, ruff and mypy must be clean at the end of every milestone.
 
@@ -52,6 +56,8 @@ There are four namespaces, all prefixed `lp-`: `lp-client — lp-isp — lp-vpn 
 - `lab up` is idempotent. `lab down` removes every `lp-*` object even after a crash (state in `/run/leakprobe/lab.json`; a context manager plus `atexit` guarantees cleanup).
 - Only private and documentation address ranges may be used. Never route lab traffic to real public addresses.
 - WireGuard keys are generated per run and must never be committed.
+
+Lab code: `lab/topology.py` holds the whole address plan (import from it, don't repeat addresses); `lab/builder.py` does up/down/status plus `running_lab()` (a context manager with `atexit`); `lab/services.py` runs beacon/canary/DNS as `python -m leakprobe.lab.services` inside namespaces, detached with stderr in `/run/leakprobe/*.stderr`; resolver query logs are in `/run/leakprobe/{isp,vpn}-dns.log`. Beyond PLAN.md's table, IPv6 has `2001:db8:51::/64` (isp–inet) and `2001:db8:192::/64` (vpn–inet), plus `fd66::/64` in the tunnel, and the ISP masquerades everything except toward the client. The client's wg0 uses wg-quick-style routing (fwmark `0xca6c`, table 51820). `control-broken` has no tunnel at all (`wireguard: null`); `killswitch-v4` is an `ip`-family-only kill switch (used by `wg-ipv6-leak`).
 
 Profiles in `leakprobe/lab/profiles/*.yaml` carry an `expected:` map (ground truth per test ID). `scripts/run_matrix.py` / `leakprobe matrix` compares measured results against it. The target is 100% agreement.
 
