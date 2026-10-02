@@ -1,5 +1,6 @@
 """Command-line entry point. Thin layer: parse arguments, delegate, set exit code."""
 
+import ipaddress
 import sys
 from pathlib import Path
 
@@ -9,11 +10,13 @@ from rich.console import Console
 from rich.table import Table
 
 from leakprobe import __version__
+from leakprobe.analyzers.packet_classifier import DEFAULT_LAN, ClassifierContext
 from leakprobe.collectors import routes
 from leakprobe.doctor import run_checks
 from leakprobe.models import Report, exit_code, make_report
 from leakprobe.report import OutputFormat, render
 from leakprobe.report.jsonout import from_json
+from leakprobe.tests_impl.egress import audit_egress
 from leakprobe.tests_impl.route_audit import audit_routes
 from leakprobe.util.net import parse_endpoint
 from leakprobe.util.sh import ShError
@@ -117,3 +120,30 @@ def audit_routes_cmd(
     finding = audit_routes(state, tunnel, endpoints, allow_lan)
     env = {"tunnel": ",".join(tunnel), "source": str(from_file) if from_file else "live"}
     _emit(make_report([finding], environment=env), fmt, output, strict)
+
+
+@app.command()
+def analyze(
+    capture: Path = typer.Argument(..., exists=True, dir_okay=False, help="pcap/pcapng file."),
+    endpoint: str = typer.Option(..., "--endpoint", "-e", help="VPN endpoint IP:PORT."),
+    allow_lan: bool = ALLOW_LAN,
+    lan_prefix: list[str] = typer.Option(
+        [], "--lan-prefix", help="LAN prefix for --allow-lan (default: private ranges)."
+    ),
+    iface: str = typer.Option("", "--iface", help="Interface the capture was taken on."),
+    fmt: OutputFormat = FORMAT,
+    output: Path | None = OUTPUT,
+    strict: bool = STRICT,
+) -> None:
+    """LP-EGRESS-01 on a saved capture of the physical interface (no root needed)."""
+    from leakprobe.capture.pcap import parse_pcap  # scapy is slow to import
+
+    try:
+        ip, port = parse_endpoint(endpoint)
+        prefixes = tuple(ipaddress.ip_network(p, strict=False) for p in lan_prefix) or DEFAULT_LAN
+        packets = parse_pcap(capture, iface)
+    except (ValueError, OSError) as exc:
+        raise _fail(str(exc)) from exc
+    ctx = ClassifierContext(ip, port, allow_lan, prefixes)
+    env = {"capture": str(capture), "endpoint": endpoint, "physical": iface or "unknown"}
+    _emit(make_report([audit_egress(packets, ctx)], environment=env), fmt, output, strict)

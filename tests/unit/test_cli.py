@@ -95,3 +95,28 @@ def test_audit_routes_bad_file(tmp_path: Path) -> None:
     bad = tmp_path / "bad.json"
     bad.write_text("{}")
     assert runner.invoke(cli.app, ["audit-routes", "--from-file", str(bad)]).exit_code == 2
+
+
+def test_analyze_pcap(tmp_path: Path) -> None:
+    from scapy.utils import wrpcap
+
+    from tests.unit.packets import PACKETS
+
+    path = tmp_path / "c.pcap"
+    wrpcap(str(path), [PACKETS["endpoint_out"], PACKETS["arp"], PACKETS["dns_leak"]])
+    result = runner.invoke(
+        cli.app, ["analyze", str(path), "--endpoint", "203.0.113.10:51820", "-f", "json"]
+    )
+    assert result.exit_code == 1
+    finding = from_json(result.output).findings[0]
+    assert finding.test_id == "LP-EGRESS-01" and finding.metrics["leak_dns"] == 1
+
+    wrpcap(str(path), [PACKETS["endpoint_out"], PACKETS["lan_ssh"]])
+    args = ["analyze", str(path), "-e", "203.0.113.10:51820", "--allow-lan"]
+    assert runner.invoke(cli.app, args).exit_code == 0
+
+
+def test_analyze_bad_endpoint(tmp_path: Path) -> None:
+    path = tmp_path / "c.pcap"
+    path.write_bytes(b"")
+    assert runner.invoke(cli.app, ["analyze", str(path), "-e", "nope"]).exit_code == 2

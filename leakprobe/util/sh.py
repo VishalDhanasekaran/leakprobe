@@ -61,3 +61,13 @@ def run(
 def which(tool: str) -> str | None:
     """Absolute path of ``tool`` on PATH, or None."""
     return shutil.which(tool)
+
+
+def spawn(args: Sequence[str]) -> "subprocess.Popen[str]":
+    """Start a long-running command (e.g. tcpdump); stderr is piped, stdout discarded."""
+    argv = tuple(args)
+    if not argv:
+        raise ValueError("empty command")
+    return subprocess.Popen(
+        argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
+    )

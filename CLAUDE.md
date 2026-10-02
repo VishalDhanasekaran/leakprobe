@@ -39,6 +39,8 @@ Key boundaries:
 - **CLI.** `cli.py` is a thin typer layer with no logic.
 - **Models.** `models.py` (pydantic v2): `PacketRecord`, `Finding`, `Report`, `Status`, `Severity`. Exit codes: 0 all pass (WARN ok unless `--strict`), 1 any FAIL, 2 tool/setup error.
 - **Route prediction.** `analyzers/route_predictor.py` walks `ip rule` by priority (from/to/fwmark/lookup/`suppress_prefixlength`), then does longest-prefix match with a lowest-metric tie-break, for v4 and v6. It must flag `0.0.0.0/1 + 128.0.0.0/1` via a non-tunnel device with the TunnelVision / CVE-2024-3661 message.
+- **Route audit scope.** LP-ROUTE-01 audits IPv6 only when a tunnel route covers an IPv6 test destination; for a v4-only tunnel, IPv6 egress is LP-V6-01's job (keeps `wg-default-leaky`'s expected ROUTE=pass). Bypass = a non-tunnel route with prefix > /0 that actually wins `predict_egress` for an address inside it; the endpoint host route, link-scope prefixes and the directly connected private subnet are exempt, and routed private prefixes are exempt only with `--allow-lan`. Rule selectors the predictor can't evaluate (uidrange, oif, ports…) never match.
+- **Classifier.** MLD (ICMPv6 130–132, 143) counts as HOUSEKEEPING along with NDP 133–137, because the kernel emits it on any IPv6-enabled link. LAN = both ends in local prefixes (or a multicast/broadcast destination), only with `--allow-lan`.
 - **Kill-switch timing.** Leak-window math compares pcap kernel timestamps with `time.time()` taken after the fault command, on the same host. Fault injectors expose `inject()`/`restore()`; always call `restore()` in `finally`.
 
 ## Lab
@@ -55,6 +57,7 @@ Profiles in `leakprobe/lab/profiles/*.yaml` carry an `expected:` map (ground tru
 
 ## Tests
 
+- Route fixtures in `tests/fixtures/routes/*.json` are real `ip -j` output; regenerate them with `tests/fixtures/routes/generate.sh` (uses `unshare -rn`, no root). Note `ip -j route show table all` without `-4`/`-6` returns both families on iproute2 7.x.
 - `tests/unit/`: no root. Generate pcaps with scapy inside the tests; do not commit binary pcaps. Text fixtures (route JSON, `ss` output) go in `tests/fixtures/`.
 - `tests/integration/`: `@pytest.mark.root`, skipped unless `EUID == 0` and `LEAKPROBE_LAB=1`.
 
