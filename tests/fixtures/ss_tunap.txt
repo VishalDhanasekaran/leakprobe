@@ -1,0 +1,7 @@
+udp ESTAB  0      0                              192.168.100.2%c-phys:68                             192.168.100.1:67 
+udp UNCONN 0      0                                        0.0.0.0:51820                              0.0.0.0:*  
+udp UNCONN 0      0              [fe80::95b5:9cc9:2711:e614]%c-phys:546                                   [::]:*  
+tcp ESTAB  0      0                                     10.66.0.2:41234                         198.51.100.10:8080  users:(("curl",pid=4242,fd=5))
+tcp ESTAB  0      0                                 192.168.100.2:55000                         198.51.100.10:443   users:(("leaky-app",pid=777,fd=12),("leaky-app",pid=777,fd=13))
+tcp LISTEN 0      4096                                          *:22                                        *:*     users:(("sshd",pid=1,fd=3))
+tcp LISTEN 0      128                                       [::]:8080                                     [::]:*  

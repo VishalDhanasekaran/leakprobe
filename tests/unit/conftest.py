@@ -4,17 +4,16 @@ from datetime import UTC, datetime
 
 import pytest
 
-from leakprobe.models import Finding, Report, Severity, Status, overall_status
+from leakprobe import models
+from leakprobe.models import Finding, Report, Severity, Status
 
 
 def make_report(findings: list[Finding]) -> Report:
-    return Report(
-        tool_version="0.1.0",
-        started_at=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
+    return models.make_report(
+        findings,
         mode="lab",
         environment={"kernel": "6.18", "tunnel": "wg0", "physical": "c-phys"},
-        findings=findings,
-        overall=overall_status(findings),
+        started_at=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
     )
 
 

@@ -1,0 +1,21 @@
+Global
+           Protocols: +LLMNR +mDNS -DNSOverTLS DNSSEC=no/unsupported
+    resolv.conf mode: stub
+  Current DNS Server: 10.66.0.1
+         DNS Servers: 10.66.0.1 1.1.1.1#cloudflare-dns.com
+Fallback DNS Servers: 9.9.9.9
+
+Link 2 (c-phys)
+    Current Scopes: DNS LLMNR/IPv4 LLMNR/IPv6
+         Protocols: +DefaultRoute +LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported
+Current DNS Server: 192.168.100.1
+       DNS Servers: 192.168.100.1
+                    fd00:100::1
+                    fe80::1%c-phys
+        DNS Domain: lan
+
+Link 3 (wg0)
+    Current Scopes: DNS
+         Protocols: +DefaultRoute -LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported
+       DNS Servers: 10.66.0.1
+        DNS Domain: ~.

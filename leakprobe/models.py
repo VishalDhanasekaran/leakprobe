@@ -1,6 +1,6 @@
 """Core data models shared by collectors, analyzers, tests and reports."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Literal
 
@@ -84,3 +84,22 @@ def exit_code(findings: list[Finding], strict: bool = False) -> int:
     if overall is Status.FAIL or (strict and overall is Status.WARN):
         return 1
     return 0
+
+
+def make_report(
+    findings: list[Finding],
+    mode: Literal["lab", "real"] = "real",
+    environment: dict[str, str] | None = None,
+    started_at: datetime | None = None,
+) -> Report:
+    """Assemble a Report and compute its overall status."""
+    from leakprobe import __version__
+
+    return Report(
+        tool_version=__version__,
+        started_at=started_at or datetime.now(UTC),
+        mode=mode,
+        environment=environment or {},
+        findings=findings,
+        overall=overall_status(findings),
+    )

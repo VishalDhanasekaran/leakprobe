@@ -68,3 +68,30 @@ def test_doctor_missing_required(monkeypatch: pytest.MonkeyPatch) -> None:
     checks = [Check("tool: wg", False, "not installed"), Check("tool: openvpn", False, "-", False)]
     monkeypatch.setattr(cli, "run_checks", lambda: checks)
     assert runner.invoke(cli.app, ["doctor"]).exit_code == 2
+
+
+ROUTES = Path(__file__).parent.parent / "fixtures" / "routes"
+
+
+def test_audit_routes_from_file() -> None:
+    result = runner.invoke(
+        cli.app, ["audit-routes", "--from-file", str(ROUTES / "tunnelvision.json"), "-f", "json"]
+    )
+    assert result.exit_code == 1
+    rep = from_json(result.output)
+    assert rep.findings[0].test_id == "LP-ROUTE-01"
+    assert "CVE-2024-3661" in rep.findings[0].summary
+
+
+def test_audit_routes_pass_and_save(tmp_path: Path) -> None:
+    saved = tmp_path / "state.json"
+    args = ["audit-routes", "--from-file", str(ROUTES / "openvpn_def1.json"), "-t", "tun0",
+            "-e", "203.0.113.10:1194", "--save", str(saved)]
+    assert runner.invoke(cli.app, args).exit_code == 0
+    assert saved.exists()
+
+
+def test_audit_routes_bad_file(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.json"
+    bad.write_text("{}")
+    assert runner.invoke(cli.app, ["audit-routes", "--from-file", str(bad)]).exit_code == 2

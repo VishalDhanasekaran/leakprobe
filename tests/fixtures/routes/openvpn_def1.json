@@ -1,0 +1,211 @@
+{
+ "routes4": [
+  {
+   "dst": "0.0.0.0/1",
+   "dev": "tun0",
+   "scope": "link",
+   "flags": []
+  },
+  {
+   "dst": "default",
+   "gateway": "192.168.100.1",
+   "dev": "c-phys",
+   "flags": []
+  },
+  {
+   "dst": "10.8.0.0/24",
+   "dev": "tun0",
+   "protocol": "kernel",
+   "scope": "link",
+   "prefsrc": "10.8.0.2",
+   "flags": []
+  },
+  {
+   "dst": "128.0.0.0/1",
+   "dev": "tun0",
+   "scope": "link",
+   "flags": []
+  },
+  {
+   "dst": "192.168.100.0/24",
+   "dev": "c-phys",
+   "protocol": "kernel",
+   "scope": "link",
+   "prefsrc": "192.168.100.2",
+   "flags": []
+  },
+  {
+   "dst": "203.0.113.10",
+   "gateway": "192.168.100.1",
+   "dev": "c-phys",
+   "flags": []
+  },
+  {
+   "type": "local",
+   "dst": "10.8.0.2",
+   "dev": "tun0",
+   "table": "local",
+   "protocol": "kernel",
+   "scope": "host",
+   "prefsrc": "10.8.0.2",
+   "flags": []
+  },
+  {
+   "type": "broadcast",
+   "dst": "10.8.0.255",
+   "dev": "tun0",
+   "table": "local",
+   "protocol": "kernel",
+   "scope": "link",
+   "prefsrc": "10.8.0.2",
+   "flags": []
+  },
+  {
+   "type": "local",
+   "dst": "192.168.100.2",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "scope": "host",
+   "prefsrc": "192.168.100.2",
+   "flags": []
+  },
+  {
+   "type": "broadcast",
+   "dst": "192.168.100.255",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "scope": "link",
+   "prefsrc": "192.168.100.2",
+   "flags": []
+  }
+ ],
+ "routes6": [
+  {
+   "dst": "::/1",
+   "dev": "tun0",
+   "metric": 1024,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "dst": "fd00:100::/64",
+   "dev": "c-phys",
+   "protocol": "kernel",
+   "metric": 256,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "dst": "fe80::/64",
+   "dev": "c-phys",
+   "protocol": "kernel",
+   "metric": 256,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "dst": "fe80::/64",
+   "dev": "tun0",
+   "protocol": "kernel",
+   "metric": 256,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "dst": "8000::/1",
+   "dev": "tun0",
+   "metric": 1024,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "dst": "default",
+   "gateway": "fd00:100::1",
+   "dev": "c-phys",
+   "metric": 1024,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "type": "local",
+   "dst": "fd00:100::2",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "metric": 0,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "type": "local",
+   "dst": "fe80::9cc7:73ff:fe53:85c",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "metric": 0,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "type": "local",
+   "dst": "fe80::9cf1:6ff:fe28:5f79",
+   "dev": "tun0",
+   "table": "local",
+   "protocol": "kernel",
+   "metric": 0,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "type": "multicast",
+   "dst": "ff00::/8",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "metric": 256,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "type": "multicast",
+   "dst": "ff00::/8",
+   "dev": "tun0",
+   "table": "local",
+   "protocol": "kernel",
+   "metric": 256,
+   "flags": [],
+   "pref": "medium"
+  }
+ ],
+ "rules4": [
+  {
+   "priority": 0,
+   "src": "all",
+   "table": "local"
+  },
+  {
+   "priority": 32766,
+   "src": "all",
+   "table": "main"
+  },
+  {
+   "priority": 32767,
+   "src": "all",
+   "table": "default"
+  }
+ ],
+ "rules6": [
+  {
+   "priority": 0,
+   "src": "all",
+   "table": "local"
+  },
+  {
+   "priority": 32766,
+   "src": "all",
+   "table": "main"
+  }
+ ]
+}

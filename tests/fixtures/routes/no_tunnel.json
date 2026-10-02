@@ -1,0 +1,123 @@
+{
+ "routes4": [
+  {
+   "dst": "default",
+   "gateway": "192.168.100.1",
+   "dev": "c-phys",
+   "flags": []
+  },
+  {
+   "dst": "192.168.100.0/24",
+   "dev": "c-phys",
+   "protocol": "kernel",
+   "scope": "link",
+   "prefsrc": "192.168.100.2",
+   "flags": []
+  },
+  {
+   "type": "local",
+   "dst": "192.168.100.2",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "scope": "host",
+   "prefsrc": "192.168.100.2",
+   "flags": []
+  },
+  {
+   "type": "broadcast",
+   "dst": "192.168.100.255",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "scope": "link",
+   "prefsrc": "192.168.100.2",
+   "flags": []
+  }
+ ],
+ "routes6": [
+  {
+   "dst": "fd00:100::/64",
+   "dev": "c-phys",
+   "protocol": "kernel",
+   "metric": 256,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "dst": "fe80::/64",
+   "dev": "c-phys",
+   "protocol": "kernel",
+   "metric": 256,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "dst": "default",
+   "gateway": "fd00:100::1",
+   "dev": "c-phys",
+   "metric": 1024,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "type": "local",
+   "dst": "fd00:100::2",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "metric": 0,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "type": "local",
+   "dst": "fe80::c06c:62ff:fe6f:a68",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "metric": 0,
+   "flags": [],
+   "pref": "medium"
+  },
+  {
+   "type": "multicast",
+   "dst": "ff00::/8",
+   "dev": "c-phys",
+   "table": "local",
+   "protocol": "kernel",
+   "metric": 256,
+   "flags": [],
+   "pref": "medium"
+  }
+ ],
+ "rules4": [
+  {
+   "priority": 0,
+   "src": "all",
+   "table": "local"
+  },
+  {
+   "priority": 32766,
+   "src": "all",
+   "table": "main"
+  },
+  {
+   "priority": 32767,
+   "src": "all",
+   "table": "default"
+  }
+ ],
+ "rules6": [
+  {
+   "priority": 0,
+   "src": "all",
+   "table": "local"
+  },
+  {
+   "priority": 32766,
+   "src": "all",
+   "table": "main"
+  }
+ ]
+}
