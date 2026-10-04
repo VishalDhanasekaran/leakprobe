@@ -183,6 +183,16 @@ def _build_topology() -> None:
     _nft(t.VPN, nat_ruleset('"v-n"'))  # VPN exit NAT: tunneled traffic appears as 192.0.2.2
 
 
+def _prime_neighbors() -> None:
+    """Resolve ARP/NDP between ISP and client, as on a network that has been up a while.
+
+    Without this, the first probes after `lab up` sit in the neighbor queue and never reach
+    the wire. Only the neighbor exchange matters, so ping failures (kill switch) are fine.
+    """
+    for addr in (t.CLIENT_IP, t.CLIENT_IP6):
+        netns.run(t.ISP, ["ping", "-c1", "-W1", addr], check=False)
+
+
 def _wg_keypair() -> tuple[str, str]:
     private = sh.run(["wg", "genkey"]).stdout.strip()
     public = sh.run(["wg", "pubkey"], input_text=private + "\n").stdout.strip()
@@ -324,6 +334,7 @@ def up(profile: Profile) -> LabState:
         if profile.wireguard is not None:
             _build_wireguard(profile)
         _start_services(state, tunnel=profile.wireguard is not None)
+        _prime_neighbors()
         state.save()
     except (sh.ShError, LabError, OSError):
         down()

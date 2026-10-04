@@ -116,11 +116,12 @@ def parse_state(raw: dict[str, list[dict[str, Any]]]) -> RoutingState:
     return RoutingState(routes=routes, rules=rules, raw=raw)
 
 
-def collect_raw() -> dict[str, list[dict[str, Any]]]:
-    """Run ``ip -j`` for routes and rules in both families. No root needed."""
+def collect_raw(ns: str | None = None) -> dict[str, list[dict[str, Any]]]:
+    """Run ``ip -j`` for routes and rules in both families (in ``ns`` if given)."""
+    prefix = ["ip", "-n", ns] if ns else ["ip"]
 
     def ip_json(*args: str) -> list[dict[str, Any]]:
-        data: list[dict[str, Any]] = json.loads(sh.run(["ip", "-j", *args]).stdout or "[]")
+        data: list[dict[str, Any]] = json.loads(sh.run([*prefix, "-j", *args]).stdout or "[]")
         return data
 
     return {
@@ -131,9 +132,9 @@ def collect_raw() -> dict[str, list[dict[str, Any]]]:
     }
 
 
-def collect() -> RoutingState:
-    """Collect the live routing state of the current namespace."""
-    return parse_state(collect_raw())
+def collect(ns: str | None = None) -> RoutingState:
+    """Collect the live routing state of the current namespace, or of ``ns``."""
+    return parse_state(collect_raw(ns))
 
 
 def load(path: Path) -> RoutingState:

@@ -6,10 +6,11 @@ import select
 import signal
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
-from typing import Any
+from typing import Any, TypeVar
 
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
@@ -21,6 +22,7 @@ from scapy.utils import PcapReader  # noqa: E402
 from leakprobe.models import PacketRecord  # noqa: E402
 from leakprobe.util import sh  # noqa: E402
 
+T = TypeVar("T")
 IP_PROTOS = {1: "icmp", 6: "tcp", 17: "udp", 47: "gre", 50: "esp", 58: "icmp6", 132: "sctp"}
 _STAT = re.compile(r"(\d+) packets? (captured|dropped by kernel)")
 
@@ -139,3 +141,15 @@ def parse_pcap(path: Path, iface: str = "") -> list[PacketRecord]:
     """Read a pcap or pcapng file into PacketRecords, in capture order."""
     with PcapReader(str(path)) as reader:
         return [to_record(pkt, iface) for pkt in reader]
+
+
+def capture_while(
+    iface: str, path: Path, action: Callable[[], T], netns: str | None = None,
+    settle: float = 0.3,
+) -> tuple[T, list[PacketRecord]]:
+    """Capture on ``iface`` while ``action`` runs; return its result and the packets seen."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with Capture(iface, path, netns):
+        result = action()
+        time.sleep(settle)  # let in-flight packets reach the capture
+    return result, parse_pcap(path, iface)
