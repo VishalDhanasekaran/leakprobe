@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from leakprobe.util import sh
-from leakprobe.util.net import IPNetwork
+from leakprobe.util.net import IPInterface, IPNetwork
 
 # Rule selectors the predictor cannot evaluate for generic traffic.
 UNMODELLED_SELECTORS = ("uid_start", "oif", "ipproto", "sport", "dport", "tos", "dsfield", "l3mdev")
@@ -145,3 +145,19 @@ def load(path: Path) -> RoutingState:
 def save(state: RoutingState, path: Path) -> None:
     """Write the raw ``ip -j`` data so it can be audited later without root."""
     path.write_text(json.dumps(state.raw, indent=1) + "\n")
+
+
+def parse_addresses(addr_json: list[dict[str, Any]]) -> list[IPInterface]:
+    """Addresses (with prefix) from ``ip -j addr show``."""
+    return [
+        ipaddress.ip_interface(f"{a['local']}/{a['prefixlen']}")
+        for link in addr_json
+        for a in link.get("addr_info", [])
+    ]
+
+
+def interface_addresses(iface: str, ns: str | None = None) -> list[IPInterface]:
+    """Addresses configured on ``iface`` (in ``ns`` if given); empty if it does not exist."""
+    argv = ["ip", *(["-n", ns] if ns else []), "-j", "addr", "show", "dev", iface]
+    result = sh.run(argv, check=False)
+    return parse_addresses(json.loads(result.stdout or "[]")) if result.ok else []

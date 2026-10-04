@@ -1,10 +1,18 @@
 """Address helpers shared by the route audit and the packet classifier."""
 
 import ipaddress
-from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
+from ipaddress import (
+    IPv4Address,
+    IPv4Interface,
+    IPv4Network,
+    IPv6Address,
+    IPv6Interface,
+    IPv6Network,
+)
 
 IPAddress = IPv4Address | IPv6Address
 IPNetwork = IPv4Network | IPv6Network
+IPInterface = IPv4Interface | IPv6Interface
 
 PRIVATE_NETS: tuple[IPNetwork, ...] = tuple(
     ipaddress.ip_network(n)

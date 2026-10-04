@@ -1,7 +1,9 @@
 """UDP probe senders: a short burst, or a steady sequence-numbered stream."""
 
+import signal
 import socket
 import time
+from types import FrameType
 
 PAYLOAD_PREFIX = b"LEAKPROBE"
 
@@ -30,18 +32,31 @@ def send_udp(dst: str, port: int, count: int = 5, interval: float = 0.05) -> dic
 
 
 def stream_udp(dst: str, port: int, rate: float, duration: float) -> dict[str, int]:
-    """Send ``rate`` packets/s for ``duration`` seconds on a fixed schedule (no drift)."""
+    """Send ``rate`` packets/s for ``duration`` seconds on a fixed schedule (no drift).
+
+    SIGTERM ends the stream early but still returns the counters.
+    """
     sent = errors = 0
     interval = 1.0 / rate
     start = time.monotonic()
     seq = 0
-    with _socket(dst) as sock:
-        while (now := time.monotonic()) - start < duration:
-            try:
-                sock.sendto(payload(seq), (dst, port))
-                sent += 1
-            except OSError:
-                errors += 1
-            seq += 1
-            time.sleep(max(0.0, start + seq * interval - now))
+    stop = False
+
+    def _stop(signum: int, frame: FrameType | None) -> None:
+        nonlocal stop
+        stop = True
+
+    previous = signal.signal(signal.SIGTERM, _stop)
+    try:
+        with _socket(dst) as sock:
+            while not stop and (now := time.monotonic()) - start < duration:
+                try:
+                    sock.sendto(payload(seq), (dst, port))
+                    sent += 1
+                except OSError:
+                    errors += 1
+                seq += 1
+                time.sleep(max(0.0, start + seq * interval - now))
+    finally:
+        signal.signal(signal.SIGTERM, previous)
     return {"sent": sent, "errors": errors}

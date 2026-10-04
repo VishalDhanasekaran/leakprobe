@@ -29,6 +29,26 @@ def is_probe(pkt: PacketRecord, canary: str, port: int) -> bool:
     return pkt.proto == "udp" and pkt.dst == canary and pkt.dport == port
 
 
+def probe_leaks(
+    records: Sequence[PacketRecord],
+    classifier: ClassifierContext,
+    canary: str,
+    port: int,
+    start: float = float("-inf"),
+    end: float = float("inf"),
+) -> list[PacketRecord]:
+    """Probe-flow packets classified LEAK with ``start <= ts < end``, in time order."""
+    return sorted(
+        (
+            p for p in records
+            if start <= p.ts < end
+            and is_probe(p, canary, port)
+            and classify(p, classifier).cls is PacketClass.LEAK
+        ),
+        key=lambda p: p.ts,
+    )
+
+
 def analyze_trial(
     records: Sequence[PacketRecord],
     t_fault: float,
@@ -39,15 +59,7 @@ def analyze_trial(
     probe_errors: int = 0,
 ) -> TrialResult:
     """PLAN.md 6.4: leaked probe packets with ``ts >= t_fault`` and their timing."""
-    leaks = sorted(
-        (
-            p for p in records
-            if p.ts >= t_fault
-            and is_probe(p, canary, port)
-            and classify(p, classifier).cls is PacketClass.LEAK
-        ),
-        key=lambda p: p.ts,
-    )
+    leaks = probe_leaks(records, classifier, canary, port, start=t_fault)
     if not leaks:
         return TrialResult(probe_sent=probe_sent, probe_errors=probe_errors)
     return TrialResult(

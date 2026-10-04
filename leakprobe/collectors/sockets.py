@@ -3,7 +3,7 @@
 import re
 from dataclasses import dataclass
 
-from leakprobe.util import sh
+from leakprobe.util import netns, sh
 
 _PROCESS = re.compile(r'\("(?P<name>[^"]*)",pid=(?P<pid>\d+)')
 
@@ -57,6 +57,7 @@ def parse_ss(text: str) -> list[Socket]:
     return sockets
 
 
-def collect() -> list[Socket]:
-    """Sockets of the current namespace. Process names need root for other users' sockets."""
-    return parse_ss(sh.run(["ss", "-tunapH"]).stdout)
+def collect(ns: str | None = None) -> list[Socket]:
+    """Sockets of this namespace or ``ns``. Process names need root for others' sockets."""
+    argv = ["ss", "-tunapH"]
+    return parse_ss((netns.run(ns, argv) if ns else sh.run(argv)).stdout)

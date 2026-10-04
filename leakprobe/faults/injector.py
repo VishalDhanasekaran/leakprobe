@@ -16,13 +16,15 @@ from leakprobe.util import netns, sh
 METHODS = ("link-down", "delete-iface", "endpoint-block")
 
 
-def _run(ns: str | None, argv: Sequence[str], **kw: Any) -> sh.ShResult:
+def run_in(ns: str | None, argv: Sequence[str], **kw: Any) -> sh.ShResult:
+    """Run ``argv`` inside ``ns``, or on this host when ``ns`` is None."""
     return netns.run(ns, argv, **kw) if ns else sh.run(argv, **kw)
+
 
 
 def tunnel_exists(ns: str | None, tunnel: str) -> bool:
     """True when the tunnel interface exists in ``ns``."""
-    return _run(ns, ["ip", "link", "show", "dev", tunnel], check=False).ok
+    return run_in(ns, ["ip", "link", "show", "dev", tunnel], check=False).ok
 
 
 @dataclass
@@ -66,11 +68,11 @@ def route_commands(route_json: list[dict[str, Any]], family: int, tunnel: str) -
 
 def snapshot_tunnel(ns: str | None, tunnel: str) -> TunnelSnapshot:
     """Capture config, addresses and routes of ``tunnel``."""
-    conf = _run(ns, ["wg", "showconf", tunnel]).stdout
-    addrs = json.loads(_run(ns, ["ip", "-j", "addr", "show", "dev", tunnel]).stdout or "[]")
+    conf = run_in(ns, ["wg", "showconf", tunnel]).stdout
+    addrs = json.loads(run_in(ns, ["ip", "-j", "addr", "show", "dev", tunnel]).stdout or "[]")
     routes: list[list[str]] = []
     for fam in (4, 6):
-        out = _run(ns, ["ip", "-j", f"-{fam}", "route", "show", "table", "all", "dev", tunnel])
+        out = run_in(ns, ["ip", "-j", f"-{fam}", "route", "show", "table", "all", "dev", tunnel])
         routes += route_commands(json.loads(out.stdout or "[]"), fam, tunnel)
     return TunnelSnapshot(conf, address_commands(addrs, tunnel), routes)
 
@@ -78,11 +80,11 @@ def snapshot_tunnel(ns: str | None, tunnel: str) -> TunnelSnapshot:
 def restore_tunnel(ns: str | None, tunnel: str, snap: TunnelSnapshot) -> None:
     """Recreate ``tunnel`` from a snapshot; steps that already hold are skipped quietly."""
     if not tunnel_exists(ns, tunnel):
-        _run(ns, ["ip", "link", "add", tunnel, "type", "wireguard"])
-        _run(ns, ["wg", "setconf", tunnel, "/dev/stdin"], input_text=snap.conf)
-    _run(ns, ["ip", "link", "set", tunnel, "up"])
+        run_in(ns, ["ip", "link", "add", tunnel, "type", "wireguard"])
+        run_in(ns, ["wg", "setconf", tunnel, "/dev/stdin"], input_text=snap.conf)
+    run_in(ns, ["ip", "link", "set", tunnel, "up"])
     for cmd in snap.addresses + snap.routes:
-        _run(ns, ["ip", *cmd], check=False)  # "File exists" is fine
+        run_in(ns, ["ip", *cmd], check=False)  # "File exists" is fine
 
 
 class Fault(ABC):
@@ -135,7 +137,7 @@ class LinkDown(_TunnelFault):
     name = "link-down"
 
     def _break(self) -> None:
-        _run(self.ns, ["ip", "link", "set", self.tunnel, "down"])
+        run_in(self.ns, ["ip", "link", "set", self.tunnel, "down"])
 
 
 class DeleteIface(_TunnelFault):
@@ -144,7 +146,7 @@ class DeleteIface(_TunnelFault):
     name = "delete-iface"
 
     def _break(self) -> None:
-        _run(self.ns, ["ip", "link", "del", self.tunnel])
+        run_in(self.ns, ["ip", "link", "del", self.tunnel])
 
 
 def block_ruleset(endpoint_ip: str) -> str:
@@ -169,10 +171,10 @@ class EndpointBlock(Fault):
         self.ns, self.endpoint_ip = ns, endpoint_ip
 
     def inject(self) -> None:
-        _run(self.ns, ["nft", "-f", "-"], input_text=block_ruleset(self.endpoint_ip))
+        run_in(self.ns, ["nft", "-f", "-"], input_text=block_ruleset(self.endpoint_ip))
 
     def restore(self) -> None:
-        _run(self.ns, ["nft", "delete", "table", "inet", "leakprobe_fault"], check=False)
+        run_in(self.ns, ["nft", "delete", "table", "inet", "leakprobe_fault"], check=False)
 
 
 def make_fault(

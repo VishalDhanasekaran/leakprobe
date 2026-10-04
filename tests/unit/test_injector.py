@@ -80,7 +80,7 @@ class FakeRunner:
 @pytest.fixture
 def fake(monkeypatch: pytest.MonkeyPatch) -> FakeRunner:
     runner = FakeRunner()
-    monkeypatch.setattr(injector, "_run", runner)
+    monkeypatch.setattr(injector, "run_in", runner)
     return runner
 
 
