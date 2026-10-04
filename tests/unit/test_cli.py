@@ -120,3 +120,13 @@ def test_analyze_bad_endpoint(tmp_path: Path) -> None:
     path = tmp_path / "c.pcap"
     path.write_bytes(b"")
     assert runner.invoke(cli.app, ["analyze", str(path), "-e", "nope"]).exit_code == 2
+
+
+def test_drop_test_rejects_unknown_method() -> None:
+    assert runner.invoke(cli.app, ["drop-test", "--method", "unplug"]).exit_code == 2
+
+
+def test_drop_test_needs_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli.builder.os, "geteuid", lambda: 1000)
+    result = runner.invoke(cli.app, ["drop-test"])
+    assert result.exit_code == 2

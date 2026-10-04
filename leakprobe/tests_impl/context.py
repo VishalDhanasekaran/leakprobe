@@ -26,6 +26,7 @@ class RunContext:
     beacon_port: int = t.BEACON_PORT
     expected_exits: tuple[str, ...] = ()
     dns_logs: dict[str, Path] = field(default_factory=dict)  # resolver name -> query log
+    fault_ns: str | None = None  # where endpoint-block drops endpoint traffic (lab: the ISP)
     workdir: Path = Path(t.STATE_DIR) / "captures"
     allow_lan: bool = False
 
@@ -45,4 +46,5 @@ class RunContext:
             endpoint_port=t.ENDPOINT_PORT,
             expected_exits=(t.EXIT_VIA_VPN,),
             dns_logs={name: Path(p) for name, p in state.dns_logs.items()},
+            fault_ns=t.ISP,
         )

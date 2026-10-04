@@ -24,6 +24,7 @@ leakprobe report results.json --format md                # re-render a saved JSO
 
 sudo leakprobe lab up --profile wg-default-leaky         # build the namespace lab
 leakprobe lab status                                     # exit 0 when the lab is up
+sudo leakprobe drop-test --method link-down --trials 20  # LP-KILL-01 on the running lab
 sudo leakprobe lab down                                  # remove every lp-* namespace
 ```
 

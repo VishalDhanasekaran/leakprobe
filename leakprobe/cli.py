@@ -13,12 +13,15 @@ from leakprobe import __version__
 from leakprobe.analyzers.packet_classifier import DEFAULT_LAN, ClassifierContext
 from leakprobe.collectors import routes
 from leakprobe.doctor import run_checks
+from leakprobe.faults.injector import METHODS
 from leakprobe.lab import builder
 from leakprobe.lab.profile import list_profiles, load_profile
 from leakprobe.models import Report, exit_code, make_report
 from leakprobe.report import OutputFormat, render
 from leakprobe.report.jsonout import from_json
+from leakprobe.tests_impl.context import RunContext
 from leakprobe.tests_impl.egress import audit_egress
+from leakprobe.tests_impl.killswitch import run_killswitch
 from leakprobe.tests_impl.route_audit import audit_routes
 from leakprobe.util.net import parse_endpoint
 from leakprobe.util.sh import ShError
@@ -200,3 +203,30 @@ def lab_status() -> None:
     status = builder.status()
     _print_status(status)
     raise typer.Exit(0 if status.up else 1)
+
+
+@app.command("drop-test")
+def drop_test(
+    method: str = typer.Option("link-down", "--method", "-m", help=" | ".join(METHODS)),
+    trials: int = typer.Option(20, "--trials", "-n", min=1, help="Number of fault trials."),
+    pre: float = typer.Option(2.0, "--pre", help="Seconds of steady probing before the fault."),
+    post: float = typer.Option(3.0, "--post", help="Seconds observed after the fault."),
+    rate: float = typer.Option(100.0, "--rate", help="Probe packets per second."),
+    fmt: OutputFormat = FORMAT,
+    output: Path | None = OUTPUT,
+    strict: bool = STRICT,
+) -> None:
+    """LP-KILL-01 against the running lab: inject a tunnel fault N times, measure leaks."""
+    if method not in METHODS:
+        raise _fail(f"unknown method {method!r}; choose from {', '.join(METHODS)}")
+    try:
+        builder.require_root()
+    except builder.LabError as exc:
+        raise _fail(str(exc)) from exc
+    status = builder.status()
+    if not status.up or status.state is None:
+        raise _fail("the lab is not up; run `leakprobe lab up --profile NAME` first")
+    ctx = RunContext.from_lab(status.state)
+    finding = run_killswitch(ctx, method, trials, pre, post, rate)
+    env = {"profile": status.state.profile, "tunnel": ctx.tunnel, "physical": ctx.physical}
+    _emit(make_report([finding], mode="lab", environment=env), fmt, output, strict)
