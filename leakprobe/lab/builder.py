@@ -95,15 +95,19 @@ def nat_ruleset(oif_match: str) -> str:
     )
 
 
-def killswitch_ruleset(family: str, tunnel: str, endpoint_ip: str, endpoint_port: int) -> str:
+def killswitch_ruleset(
+    family: str, tunnel: str, endpoint_ip: str, endpoint_port: int | None
+) -> str:
     """The PLAN.md section 9 kill switch; ``family`` "inet" (v4+v6) or "ip" (v4 only)."""
+    ip = "ip6" if ":" in endpoint_ip else "ip"
+    port = f" udp dport {endpoint_port}" if endpoint_port is not None else ""
     lines = [
         f"table {family} leakprobe_killswitch {{",
         "  chain output {",
         "    type filter hook output priority 0; policy drop;",
         '    oifname "lo" accept',
         f'    oifname "{tunnel}" accept',
-        f"    ip daddr {endpoint_ip} udp dport {endpoint_port} accept",
+        f"    {ip} daddr {endpoint_ip}{port} accept",
         "    udp sport 68 udp dport 67 accept",
     ]
     if family == "inet":
@@ -351,3 +355,16 @@ def running_lab(profile: Profile) -> Iterator[LabState]:
     finally:
         down()
         atexit.unregister(down)
+
+
+@contextmanager
+def lab_session(profile: Profile) -> Iterator[tuple[LabState, bool]]:
+    """Yield (state, reused). A healthy lab already up for ``profile`` is reused and left up;
+    otherwise a temporary lab is built and torn down afterwards."""
+    require_root()
+    current = status()
+    if current.up and current.state is not None and current.state.profile == profile.name:
+        yield current.state, True
+        return
+    with running_lab(profile) as state:
+        yield state, False

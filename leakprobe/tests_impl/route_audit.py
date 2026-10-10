@@ -4,8 +4,10 @@ import ipaddress
 from collections.abc import Sequence
 
 from leakprobe.analyzers.route_predictor import RouteDecision, predict_egress
+from leakprobe.collectors import routes
 from leakprobe.collectors.routes import Route, RoutingState
 from leakprobe.models import Finding, Severity, Status
+from leakprobe.tests_impl.context import RunContext
 from leakprobe.util.net import LINK_SCOPE_NETS, PRIVATE_NETS, within
 
 TEST_ID = "LP-ROUTE-01"
@@ -125,4 +127,13 @@ def audit_routes(
     return Finding(
         test_id=TEST_ID, title=TITLE, status=status, severity=Severity.HIGH,
         summary=summary, evidence=evidence, metrics=metrics,
+    )
+
+
+def run_route(ctx: RunContext) -> Finding:
+    """LP-ROUTE-01 on the live routing state of the client (namespace)."""
+    dests: tuple[str, ...] = DEFAULT_DESTINATIONS
+    dests += tuple(d for d in (ctx.canary, ctx.canary6) if d not in dests)
+    return audit_routes(
+        routes.collect(ctx.client_ns), [ctx.tunnel], [ctx.endpoint_ip], ctx.allow_lan, dests
     )

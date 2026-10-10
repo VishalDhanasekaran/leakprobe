@@ -1,7 +1,8 @@
 """LP-EGRESS-01: every packet on the physical interface must be endpoint or housekeeping."""
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from contextlib import suppress
 
 from leakprobe.analyzers.packet_classifier import (
     ClassifierContext,
@@ -9,7 +10,11 @@ from leakprobe.analyzers.packet_classifier import (
     PacketClass,
     classify,
 )
+from leakprobe.capture.pcap import capture_while
 from leakprobe.models import Finding, PacketRecord, Severity, Status
+from leakprobe.probes.runner import run_probe
+from leakprobe.tests_impl.context import RunContext
+from leakprobe.util import sh
 
 TEST_ID = "LP-EGRESS-01"
 TITLE = "Allowlist audit"
@@ -56,3 +61,21 @@ def audit_egress(packets: Sequence[PacketRecord], ctx: ClassifierContext) -> Fin
         test_id=TEST_ID, title=TITLE, status=status, severity=Severity.HIGH,
         summary=summary, evidence=evidence, metrics=metrics,
     )
+
+
+def run_egress(ctx: RunContext, during: Callable[[], None] = lambda: None) -> Finding:
+    """Capture the physical interface while ``during`` runs plus a short baseline probe.
+
+    The orchestrator passes the non-disruptive tests as ``during``, so the finding covers
+    normal operation; fault-injection tests run outside this window.
+    """
+    def work() -> None:
+        for dst in (ctx.canary, ctx.canary6):
+            # Baseline traffic only; an unreachable family must not abort the capture.
+            with suppress(sh.ShError, ValueError):
+                run_probe(ctx.client_ns, "udp", "--dst", dst, "--port", str(ctx.canary_port),
+                          "--count", "3")
+        during()
+
+    _, packets = capture_while(ctx.physical, ctx.workdir / "egress.pcap", work, ctx.client_ns)
+    return audit_egress(packets, ctx.classifier())

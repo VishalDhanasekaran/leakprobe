@@ -20,7 +20,7 @@ def test_markdown(report: Report) -> None:
     assert "## LP-KILL-01: Kill switch (FAIL)" in md
     assert "- udp 192.168.100.2:40000 -> 198.51.100.10:9000 after fault" in md
     assert "| leak_window_ms_p95 | 412.5 |" in md
-    assert "**Remediation**" in md
+    assert "**Remediation**\n\n```\ntable inet leakprobe_killswitch { ... }\n```" in md
 
 
 def test_terminal_plain(report: Report) -> None:

@@ -130,3 +130,62 @@ def test_drop_test_needs_root(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli.builder.os, "geteuid", lambda: 1000)
     result = runner.invoke(cli.app, ["drop-test"])
     assert result.exit_code == 2
+
+
+def _stub_run(monkeypatch: pytest.MonkeyPatch, report: Report) -> list[object]:
+    """No root, no lab: capture the context passed to the orchestrator."""
+    seen: list[object] = []
+    monkeypatch.setattr(cli.builder, "require_root", lambda: None)
+
+    def fake_run(ctx: object, opts: object, *args: object, **kw: object) -> Report:
+        seen.append(ctx)
+        return report
+
+    monkeypatch.setattr(cli.orchestrator, "run", fake_run)
+    return seen
+
+
+def test_run_real_needs_yes(monkeypatch: pytest.MonkeyPatch, report: Report) -> None:
+    _stub_run(monkeypatch, report)
+    args = ["run", "--mode", "real", "--physical", "eth0", "--endpoint", "203.0.113.10:51820"]
+    result = runner.invoke(cli.app, args)
+    assert result.exit_code == 2
+    assert "sends probe traffic" in result.output
+    assert runner.invoke(cli.app, [*args, "--yes"]).exit_code == 1  # report contains a FAIL
+
+
+def test_run_real_passes_context(monkeypatch: pytest.MonkeyPatch, report: Report) -> None:
+    seen = _stub_run(monkeypatch, report)
+    args = ["run", "--mode", "real", "--yes", "--physical", "eth0", "--tunnel", "wg1",
+            "--endpoint", "203.0.113.10:51820", "--beacon", "192.0.2.50", "-f", "json"]
+    result = runner.invoke(cli.app, args)
+    assert from_json(result.stdout) == report
+    ctx = seen[0]
+    assert (ctx.tunnel, ctx.physical, ctx.beacon) == ("wg1", "eth0", "192.0.2.50")  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["run", "--mode", "lab"],  # no profile
+        ["run", "--mode", "lab", "--profile", "nope"],
+        ["run", "--mode", "moon"],
+        ["run", "--tests", "LP-FOO-01", "--profile", "wg-hardened"],
+        ["run", "--method", "unplug", "--profile", "wg-hardened"],
+        ["run", "--mode", "real", "--yes", "--endpoint", "203.0.113.10"],  # no physical
+    ],
+)
+def test_run_usage_errors(
+    monkeypatch: pytest.MonkeyPatch, report: Report, args: list[str]
+) -> None:
+    _stub_run(monkeypatch, report)
+    assert runner.invoke(cli.app, args).exit_code == 2
+
+
+def test_run_needs_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    def deny() -> None:
+        raise cli.builder.LabError("the lab needs root")
+
+    monkeypatch.setattr(cli.builder, "require_root", deny)
+    result = runner.invoke(cli.app, ["run", "--profile", "wg-hardened"])
+    assert result.exit_code == 2 and "root" in result.output

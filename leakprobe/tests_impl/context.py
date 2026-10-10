@@ -1,5 +1,7 @@
 """Everything a test needs to know about the system under test, in lab or real mode."""
 
+import ipaddress
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -7,6 +9,7 @@ from typing import Literal
 from leakprobe.analyzers.packet_classifier import ClassifierContext
 from leakprobe.lab import topology as t
 from leakprobe.lab.builder import LabState
+from leakprobe.util.net import parse_endpoint
 
 
 @dataclass(frozen=True)
@@ -29,6 +32,7 @@ class RunContext:
     fault_ns: str | None = None  # where endpoint-block drops endpoint traffic (lab: the ISP)
     workdir: Path = Path(t.STATE_DIR) / "captures"
     allow_lan: bool = False
+    tunnel_dns: str | None = None  # the resolver inside the tunnel, for remediation text
 
     def classifier(self) -> ClassifierContext:
         """Allowlist for packets on the physical interface."""
@@ -47,4 +51,24 @@ class RunContext:
             expected_exits=(t.EXIT_VIA_VPN,),
             dns_logs={name: Path(p) for name, p in state.dns_logs.items()},
             fault_ns=t.ISP,
+            tunnel_dns=t.VPN_RESOLVER,
+        )
+
+    @classmethod
+    def from_real(
+        cls,
+        tunnel: str,
+        physical: str,
+        endpoint: str,
+        beacon: str | None = None,
+        expected_exits: Sequence[str] = (),
+        allow_lan: bool = False,
+    ) -> "RunContext":
+        """Context for this host. Without a beacon, probes target the (unrouted) lab canary."""
+        ip, port = parse_endpoint(endpoint)
+        target = str(ipaddress.ip_address(beacon)) if beacon else t.CANARY_IP
+        return cls(
+            mode="real", client_ns=None, physical=physical, tunnel=tunnel, endpoint_ip=ip,
+            endpoint_port=port, canary=target, beacon=target,
+            expected_exits=tuple(expected_exits), allow_lan=allow_lan,
         )

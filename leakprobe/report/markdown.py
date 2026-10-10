@@ -38,5 +38,5 @@ def to_markdown(report: Report) -> str:
             lines += ["", "| Metric | Value |", "|---|---|"]
             lines += [f"| {_cell(k)} | {v} |" for k, v in f.metrics.items()]
         if f.remediation:
-            lines += ["", "**Remediation**", "", f.remediation]
+            lines += ["", "**Remediation**", "", "```", f.remediation, "```"]
     return "\n".join(lines) + "\n"

@@ -1,5 +1,6 @@
 """Command-line entry point. Thin layer: parse arguments, delegate, set exit code."""
 
+import dataclasses
 import ipaddress
 import sys
 from pathlib import Path
@@ -9,7 +10,7 @@ from pydantic import ValidationError
 from rich.console import Console
 from rich.table import Table
 
-from leakprobe import __version__
+from leakprobe import __version__, orchestrator
 from leakprobe.analyzers.packet_classifier import DEFAULT_LAN, ClassifierContext
 from leakprobe.collectors import routes
 from leakprobe.doctor import run_checks
@@ -230,3 +231,71 @@ def drop_test(
     finding = run_killswitch(ctx, method, trials, pre, post, rate)
     env = {"profile": status.state.profile, "tunnel": ctx.tunnel, "physical": ctx.physical}
     _emit(make_report([finding], mode="lab", environment=env), fmt, output, strict)
+
+
+REAL_NOTICE = (
+    "notice: real mode sends probe traffic (UDP, TCP, DNS) from this host and briefly takes "
+    "the tunnel down for LP-START-01/LP-KILL-01; use only on machines and networks you own."
+)
+
+
+@app.command("run")
+def run_cmd(
+    mode: str = typer.Option("lab", "--mode", help="lab | real"),
+    profile: str | None = typer.Option(
+        None, "--profile", "-p", help=f"Lab profile: {', '.join(list_profiles())}"
+    ),
+    tests: str = typer.Option("all", "--tests", help="all, or comma-separated test IDs."),
+    trials: int = typer.Option(20, "--trials", "-n", min=1, help="LP-KILL-01 fault trials."),
+    method: str = typer.Option("link-down", "--method", "-m", help=" | ".join(METHODS)),
+    tunnel: str = typer.Option("wg0", "--tunnel", "-t", help="Tunnel interface (real mode)."),
+    physical: str | None = typer.Option(None, "--physical", help="Physical iface (real mode)."),
+    endpoint: str | None = typer.Option(None, "--endpoint", "-e", help="VPN IP:PORT (real)."),
+    beacon: str | None = typer.Option(None, "--beacon", help="Beacon host IP (real mode)."),
+    expected_exit: list[str] = typer.Option(
+        [], "--expected-exit", help="Expected VPN exit IP seen by the beacon (real mode)."
+    ),
+    yes: bool = typer.Option(False, "--yes", help="Confirm sending probe traffic (real mode)."),
+    allow_lan: bool = ALLOW_LAN,
+    fmt: OutputFormat = FORMAT,
+    output: Path | None = OUTPUT,
+    strict: bool = STRICT,
+) -> None:
+    """Run the test suite against a lab profile or this machine and report with fixes."""
+    if method not in METHODS:
+        raise _fail(f"unknown method {method!r}; choose from {', '.join(METHODS)}")
+    try:
+        opts = orchestrator.RunOptions(orchestrator.select_tests(tests), trials, method)
+        builder.require_root()
+    except (ValueError, builder.LabError) as exc:
+        raise _fail(str(exc)) from exc
+
+    def progress(test_id: str) -> None:
+        err.print(f"[dim]running {test_id}[/]")
+
+    if mode == "lab":
+        if profile is None:
+            raise _fail("lab mode needs --profile")
+        try:
+            prof = load_profile(profile)
+            with builder.lab_session(prof) as (state, reused):
+                err.print(f"[dim]{'using running' if reused else 'built temporary'} lab "
+                          f"for {profile}[/]")
+                ctx = dataclasses.replace(RunContext.from_lab(state), allow_lan=allow_lan)
+                rep = orchestrator.run(ctx, opts, {"profile": profile}, progress)
+        except (ValueError, builder.LabError, ShError, OSError) as exc:
+            raise _fail(str(exc)) from exc
+    elif mode == "real":
+        err.print(REAL_NOTICE)
+        if not yes:
+            raise _fail("real mode needs --yes to confirm")
+        if physical is None or endpoint is None:
+            raise _fail("real mode needs --physical and --endpoint")
+        try:
+            ctx = RunContext.from_real(tunnel, physical, endpoint, beacon, expected_exit, allow_lan)
+        except ValueError as exc:
+            raise _fail(str(exc)) from exc
+        rep = orchestrator.run(ctx, opts, {"beacon": beacon or "none"}, progress)
+    else:
+        raise _fail(f"unknown mode {mode!r}; choose lab or real")
+    _emit(rep, fmt, output, strict)
