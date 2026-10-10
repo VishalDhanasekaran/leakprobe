@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from rich.console import Console
 from rich.table import Table
 
-from leakprobe import __version__, orchestrator
+from leakprobe import __version__, matrix, orchestrator
 from leakprobe.analyzers.packet_classifier import DEFAULT_LAN, ClassifierContext
 from leakprobe.collectors import routes
 from leakprobe.doctor import run_checks
@@ -299,3 +299,47 @@ def run_cmd(
     else:
         raise _fail(f"unknown mode {mode!r}; choose lab or real")
     _emit(rep, fmt, output, strict)
+
+
+@app.command("matrix")
+def matrix_cmd(
+    profiles: str = typer.Option("all", "--profiles", help="all, or comma-separated names."),
+    trials: int = typer.Option(5, "--trials", "-n", min=1, help="LP-KILL-01 trials per profile."),
+    method: str = typer.Option("link-down", "--method", "-m", help=" | ".join(METHODS)),
+    save_dir: Path | None = typer.Option(
+        None, "--save-dir", file_okay=False, help="Also save each profile's JSON report here."
+    ),
+    from_dir: Path | None = typer.Option(
+        None, "--from-dir", exists=True, file_okay=False,
+        help="Rebuild the matrix from saved reports instead of running the lab (no root).",
+    ),
+    output: Path | None = OUTPUT,
+) -> None:
+    """Run every lab profile and compare with its expected: map (precision/recall).
+
+    Exit 0 when every cell agrees, 1 on any disagreement, 2 on a tool error.
+    """
+    names = list_profiles() if profiles.strip() == "all" else [
+        n.strip() for n in profiles.split(",") if n.strip()
+    ]
+    try:
+        profs = [load_profile(n) for n in names]
+        if from_dir is not None:
+            m = matrix.from_dir(profs, from_dir)
+        else:
+            if method not in METHODS:
+                raise ValueError(f"unknown method {method!r}; choose from {', '.join(METHODS)}")
+            builder.require_root()
+            opts = orchestrator.RunOptions(trials=trials, method=method)
+            m = matrix.build(
+                profs, lambda p: orchestrator.measure_lab(p, opts), save_dir,
+                lambda name: err.print(f"[bold]profile {name}[/]"),
+            )
+    except (ValueError, OSError, ValidationError, builder.LabError, ShError) as exc:
+        raise _fail(str(exc)) from exc
+    text = matrix.to_markdown(m)
+    if output is None:
+        sys.stdout.write(text)
+    else:
+        output.write_text(text)
+    raise typer.Exit(1 if m.disagreements() else 0)

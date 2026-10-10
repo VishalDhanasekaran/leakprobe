@@ -9,7 +9,8 @@ import platform
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
-from leakprobe.lab.profile import TEST_IDS
+from leakprobe.lab.builder import running_lab
+from leakprobe.lab.profile import TEST_IDS, Profile
 from leakprobe.models import Finding, Report, Severity, Status, make_report
 from leakprobe.report.remediation import FixContext, with_remediation
 from leakprobe.tests_impl.context import RunContext
@@ -149,3 +150,11 @@ def run(
     findings = with_remediation(findings, fix_context(ctx))
     return make_report(findings, ctx.mode, environment(ctx, opts, extra_env or {}))
 
+
+
+def measure_lab(
+    profile: Profile, opts: RunOptions, on_start: Callable[[str], None] = lambda test_id: None
+) -> Report:
+    """Build a fresh lab for ``profile``, run the suite, and always tear the lab down."""
+    with running_lab(profile) as state:
+        return run(RunContext.from_lab(state), opts, {"profile": profile.name}, on_start)
