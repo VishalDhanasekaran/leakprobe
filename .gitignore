@@ -13,3 +13,6 @@ htmlcov/
 *.pcapng
 *.key
 results*.json
+
+# typst docs
+*.pdf

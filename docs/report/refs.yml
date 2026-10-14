@@ -1,0 +1,96 @@
+perta2015:
+  type: article
+  title: "A Glance through the VPN Looking Glass: IPv6 Leakage and DNS Hijacking in Commercial VPN Clients"
+  author: ["Perta, Vasile C.", "Barbera, Marco V.", "Tyson, Gareth", "Haddadi, Hamed", "Mei, Alessandro"]
+  date: 2015
+  parent:
+    type: proceedings
+    title: Proceedings on Privacy Enhancing Technologies
+    volume: 2015
+    issue: 1
+  page-range: 77-91
+
+khan2018:
+  type: article
+  title: "An Empirical Analysis of the Commercial VPN Ecosystem"
+  author: ["Khan, Mohammad Taha", "DeBlasio, Joe", "Voelker, Geoffrey M.", "Snoeren, Alex C.", "Kanich, Chris", "Vallina-Rodriguez, Narseo"]
+  date: 2018
+  parent:
+    type: proceedings
+    title: Proceedings of the Internet Measurement Conference (IMC '18)
+    publisher: ACM
+  page-range: 443-456
+
+wireguard:
+  type: article
+  title: "WireGuard: Next Generation Kernel Network Tunnel"
+  author: "Donenfeld, Jason A."
+  date: 2017
+  parent:
+    type: proceedings
+    title: Network and Distributed System Security Symposium (NDSS)
+
+tunnelvision:
+  type: web
+  title: "TunnelVision (CVE-2024-3661): How Attackers Can Decloak Routing-Based VPNs for a Total VPN Leak"
+  author: ["Moratti, Lizzie", "Larsen, Dani Cronce"]
+  organization: Leviathan Security Group
+  date: 2024-05
+  url: https://www.leviathansecurity.com/blog/tunnelvision
+
+cve20243661:
+  type: web
+  title: "CVE-2024-3661: DHCP option 121 routes can be used to decloak VPN traffic"
+  organization: MITRE / NIST National Vulnerability Database
+  date: 2024
+  url: https://nvd.nist.gov/vuln/detail/CVE-2024-3661
+
+rfc3442:
+  type: report
+  title: "The Classless Static Route Option for Dynamic Host Configuration Protocol (DHCP) version 4"
+  author: ["Lemon, T.", "Cheshire, S.", "Volz, B."]
+  serial-number: RFC 3442
+  organization: IETF
+  date: 2002
+
+rfc1918:
+  type: report
+  title: "Address Allocation for Private Internets"
+  author: ["Rekhter, Y.", "Moskowitz, B.", "Karrenberg, D.", "de Groot, G. J.", "Lear, E."]
+  serial-number: RFC 1918
+  organization: IETF
+  date: 1996
+
+rfc5737:
+  type: report
+  title: "IPv4 Address Blocks Reserved for Documentation"
+  author: ["Arkko, J.", "Cotton, M.", "Vegoda, L."]
+  serial-number: RFC 5737
+  organization: IETF
+  date: 2010
+
+rfc3849:
+  type: report
+  title: "IPv6 Address Prefix Reserved for Documentation"
+  author: ["Huston, G.", "Lord, A.", "Smith, P."]
+  serial-number: RFC 3849
+  organization: IETF
+  date: 2004
+
+wgquick:
+  type: web
+  title: "wg-quick(8): Set up a WireGuard interface simply"
+  organization: WireGuard project
+  url: https://git.zx2c4.com/wireguard-tools/about/src/man/wg-quick.8
+
+netns:
+  type: web
+  title: "ip-netns(8) and namespaces(7): Linux manual pages"
+  organization: Linux man-pages project
+  url: https://man7.org/linux/man-pages/man8/ip-netns.8.html
+
+nft:
+  type: web
+  title: "nft(8): Administration tool of the nftables framework"
+  organization: Netfilter project
+  url: https://www.netfilter.org/projects/nftables/manpage.html
